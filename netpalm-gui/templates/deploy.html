@@ -34,10 +34,11 @@
                     <div class="tab-pane fade show active" id="getconfig" role="tabpanel">
                         <form id="getconfig-form">
                             <div class="mb-3">
-                                <label for="get-device" class="form-label">Device</label>
-                                <select class="form-select" id="get-device" required>
+                                <label for="get-device" class="form-label">Device(s)</label>
+                                <select class="form-select" id="get-device" multiple size="10" required>
                                     <option value="">Loading devices...</option>
                                 </select>
+                                <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple devices</small>
                             </div>
 
                             <div class="mb-3">
@@ -57,13 +58,26 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="get-username" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="get-username" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="get-password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="get-password" required>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label mb-0">Credentials</label>
+                                    <button class="btn btn-sm btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#get-credentials-section">
+                                        <i class="fas fa-chevron-down"></i> <span id="get-cred-status">Using defaults</span>
+                                    </button>
+                                </div>
+                                <div class="collapse" id="get-credentials-section">
+                                    <div class="card card-body mt-2">
+                                        <div class="mb-3">
+                                            <label for="get-username" class="form-label">Username</label>
+                                            <input type="text" class="form-control" id="get-username">
+                                            <small class="form-text text-muted">Leave blank to use default from settings</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="get-password" class="form-label">Password</label>
+                                            <input type="password" class="form-control" id="get-password">
+                                            <small class="form-text text-muted">Leave blank to use default from settings</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="mb-3 form-check">
@@ -71,6 +85,27 @@
                                 <label class="form-check-label" for="get-cache">
                                     Enable Cache
                                 </label>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Parsing Options</label>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="get-use-textfsm">
+                                    <label class="form-check-label" for="get-use-textfsm">
+                                        Use TextFSM (structured output parsing)
+                                    </label>
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input type="checkbox" class="form-check-input" id="get-use-ttp">
+                                    <label class="form-check-label" for="get-use-ttp">
+                                        Use TTP (Template Text Parser)
+                                    </label>
+                                </div>
+                                <div class="mt-2" id="get-ttp-template-container" style="display: none;">
+                                    <label for="get-ttp-template" class="form-label">TTP Template Name</label>
+                                    <input type="text" class="form-control" id="get-ttp-template" placeholder="example">
+                                    <small class="form-text text-muted">Template name for TTP parsing</small>
+                                </div>
                             </div>
 
                             <button type="submit" class="btn btn-primary">
@@ -83,10 +118,11 @@
                     <div class="tab-pane fade" id="setconfig" role="tabpanel">
                         <form id="setconfig-form">
                             <div class="mb-3">
-                                <label for="set-device" class="form-label">Device</label>
-                                <select class="form-select" id="set-device" required>
+                                <label for="set-device" class="form-label">Device(s)</label>
+                                <select class="form-select" id="set-device" multiple size="10" required>
                                     <option value="">Loading devices...</option>
                                 </select>
+                                <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple devices</small>
                             </div>
 
                             <div class="mb-3">
@@ -100,19 +136,63 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="set-config" class="form-label">Configuration Commands</label>
-                                <textarea class="form-control font-monospace" id="set-config" rows="8" required placeholder="interface GigabitEthernet0/1&#10;  description Configured by Netpalm&#10;  no shutdown"></textarea>
-                                <small class="form-text text-muted">Enter configuration commands (one per line)</small>
+                                <label class="form-label">Configuration Source</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="set-config-source" id="set-manual" value="manual" checked>
+                                    <label class="form-check-label" for="set-manual">
+                                        Manual Commands
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="set-config-source" id="set-template" value="template">
+                                    <label class="form-check-label" for="set-template">
+                                        J2 Template
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="set-manual-container">
+                                <div class="mb-3">
+                                    <label for="set-config" class="form-label">Configuration Commands</label>
+                                    <textarea class="form-control font-monospace" id="set-config" rows="8" placeholder="interface GigabitEthernet0/1&#10;  description Configured by Netpalm&#10;  no shutdown"></textarea>
+                                    <small class="form-text text-muted">Enter configuration commands (one per line)</small>
+                                </div>
+                            </div>
+
+                            <div id="set-template-container" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="set-template-select" class="form-label">Select Template</label>
+                                    <select class="form-select" id="set-template-select">
+                                        <option value="">Loading templates...</option>
+                                    </select>
+                                </div>
+                                <div id="set-template-vars-toggle"></div>
+                                <div id="set-template-vars-container" style="display: none;">
+                                    <!-- Dynamic template variables will be inserted here -->
+                                </div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="set-username" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="set-username" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="set-password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="set-password" required>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label mb-0">Credentials</label>
+                                    <button class="btn btn-sm btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#set-credentials-section">
+                                        <i class="fas fa-chevron-down"></i> <span id="set-cred-status">Using defaults</span>
+                                    </button>
+                                </div>
+                                <div class="collapse" id="set-credentials-section">
+                                    <div class="card card-body mt-2">
+                                        <div class="mb-3">
+                                            <label for="set-username" class="form-label">Username</label>
+                                            <input type="text" class="form-control" id="set-username">
+                                            <small class="form-text text-muted">Leave blank to use default from settings</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="set-password" class="form-label">Password</label>
+                                            <input type="password" class="form-control" id="set-password">
+                                            <small class="form-text text-muted">Leave blank to use default from settings</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="mb-3 form-check">
@@ -213,5 +293,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/form-utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/credentials.js') }}"></script>
 <script src="{{ url_for('static', filename='js/deploy.js') }}"></script>
 {% endblock %}

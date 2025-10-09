@@ -2,10 +2,78 @@
 Netbox API client for fetching device information
 """
 import requests
-from typing import List, Dict
+from typing import List, Dict, Optional
 import logging
 
 log = logging.getLogger(__name__)
+
+
+# Platform/Manufacturer to Netmiko device_type mapping
+PLATFORM_TO_NETMIKO = {
+    # Juniper
+    'juniper_junos': 'juniper_junos',
+    'junos': 'juniper_junos',
+    'juniper': 'juniper_junos',
+
+    # Cisco IOS/IOS-XE
+    'cisco_ios': 'cisco_ios',
+    'ios': 'cisco_ios',
+    'cisco': 'cisco_ios',
+    'catalyst': 'cisco_ios',
+
+    # Cisco IOS-XR
+    'cisco_xr': 'cisco_xr',
+    'iosxr': 'cisco_xr',
+    'ios-xr': 'cisco_xr',
+
+    # Cisco NX-OS
+    'cisco_nxos': 'cisco_nxos',
+    'nxos': 'cisco_nxos',
+    'nexus': 'cisco_nxos',
+
+    # Arista
+    'arista_eos': 'arista_eos',
+    'eos': 'arista_eos',
+    'arista': 'arista_eos',
+
+    # HP/HPE
+    'hp_comware': 'hp_comware',
+    'hp_procurve': 'hp_procurve',
+    'hpe': 'hp_comware',
+
+    # Dell
+    'dell_os10': 'dell_os10',
+    'dell_force10': 'dell_force10',
+    'dell': 'dell_os10',
+}
+
+
+def get_netmiko_device_type(platform_name: Optional[str], manufacturer_name: Optional[str]) -> str:
+    """
+    Determine netmiko device_type from platform or manufacturer
+
+    Args:
+        platform_name: Netbox platform name (e.g., "junos", "ios")
+        manufacturer_name: Netbox manufacturer name (e.g., "Juniper", "Cisco")
+
+    Returns:
+        Netmiko device_type string, defaults to 'cisco_ios' if unknown
+    """
+    # Try platform first
+    if platform_name:
+        platform_lower = platform_name.lower().strip()
+        if platform_lower in PLATFORM_TO_NETMIKO:
+            return PLATFORM_TO_NETMIKO[platform_lower]
+
+    # Try manufacturer as fallback
+    if manufacturer_name:
+        manufacturer_lower = manufacturer_name.lower().strip()
+        if manufacturer_lower in PLATFORM_TO_NETMIKO:
+            return PLATFORM_TO_NETMIKO[manufacturer_lower]
+
+    # Default to cisco_ios
+    log.warning(f"Unknown platform '{platform_name}' or manufacturer '{manufacturer_name}', defaulting to cisco_ios")
+    return 'cisco_ios'
 
 
 class NetboxClient:
@@ -90,10 +158,38 @@ class NetboxClient:
         devices = self.get_devices()
         return sorted([device.get('name', '') for device in devices if device.get('name')])
 
+    def get_device_by_name(self, device_name: str) -> Dict:
+        """
+        Get full device details by name (not brief format)
+
+        Args:
+            device_name: The device hostname
+
+        Returns:
+            Device dictionary with platform, manufacturer, etc.
+        """
+        try:
+            url = f"{self.base_url}/api/dcim/devices?name={device_name}"
+            response = self.session.get(url, verify=self.verify_ssl, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+            results = data.get('results', [])
+
+            if results:
+                return results[0]
+            else:
+                log.warning(f"Device not found: {device_name}")
+                return {}
+        except requests.exceptions.RequestException as e:
+            log.error(f"Error fetching device {device_name}: {e}")
+            return {}
+
     def get_devices_with_details(self) -> List[Dict]:
         """
         Get devices with relevant details for the GUI
         Uses brief format for faster response
+        Filters to only show devices with "viasat.io" in the name
 
         Returns:
             List of dicts containing name, id, display, etc.
@@ -102,11 +198,16 @@ class NetboxClient:
         device_list = []
 
         for device in devices:
+            device_name = device.get('name', '')
+            # Only include devices with "viasat.io" in the name
+            if 'viasat.io' not in device_name:
+                continue
+
             # Brief format returns: id, url, display, name, description
             device_list.append({
-                'name': device.get('name', ''),
+                'name': device_name,
                 'id': device.get('id'),
-                'display': device.get('display', device.get('name', '')),
+                'display': device.get('display', device_name),
                 'url': device.get('url', '')
             })
 

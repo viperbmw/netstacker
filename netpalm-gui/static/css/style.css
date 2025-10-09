@@ -71,6 +71,17 @@ pre {
     opacity: 0.9;
 }
 
+/* Dashboard clickable cards */
+.dashboard-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.25) !important;
+}
+
 /* Auto-refresh button */
 #auto-refresh-btn.active {
     background-color: #0d6efd;

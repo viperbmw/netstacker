@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Templates - Netpalm GUI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="fas fa-file-code"></i> Jinja2 Templates
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-list"></i> Template List</h5>
+                <button class="btn btn-sm btn-success" id="create-template-btn">
+                    <i class="fas fa-plus"></i> New
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="templates-loading" class="text-center">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                </div>
+                <div id="templates-list" style="display: none;">
+                    <ul class="list-group" id="template-items">
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-edit"></i> Template Editor</h5>
+                <div>
+                    <button class="btn btn-sm btn-primary" id="save-template-btn" style="display: none;">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-sm btn-danger" id="delete-template-btn" style="display: none;">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="editor-empty" class="text-center text-muted py-5">
+                    <i class="fas fa-file-code fa-3x mb-3"></i>
+                    <p>Select a template or create a new one</p>
+                </div>
+                <div id="editor-container" style="display: none;">
+                    <div class="mb-3">
+                        <label for="template-name" class="form-label">Template Name</label>
+                        <input type="text" class="form-control" id="template-name" placeholder="my-template.j2">
+                    </div>
+                    <div class="mb-3">
+                        <label for="template-content" class="form-label">Template Content</label>
+                        <textarea class="form-control font-monospace" id="template-content" rows="20" placeholder="Enter Jinja2 template here..."></textarea>
+                        <small class="form-text text-muted">Use Jinja2 syntax for variables and loops</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- CodeMirror for syntax highlighting -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/jinja2/jinja2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="{{ url_for('static', filename='js/templates.js') }}"></script>
+<style>
+.CodeMirror {
+    height: 500px;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    font-size: 14px;
+}
+</style>
+{% endblock %}

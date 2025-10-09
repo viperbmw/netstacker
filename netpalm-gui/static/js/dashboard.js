@@ -8,116 +8,188 @@ $(document).ready(function() {
 });
 
 function loadDashboard() {
-    loadWorkers();
+    loadWorkerCount();
+    loadDevicesList();
     loadTasks();
     loadDeviceCount();
 }
 
-function loadWorkers() {
+function loadWorkerCount() {
     $.get('/api/workers')
         .done(function(data) {
             const workerCount = data.length || 0;
             $('#worker-count').text(workerCount);
-
-            // Update workers table
-            const tbody = $('#workers-body');
-            tbody.empty();
-
-            if (data.length === 0) {
-                tbody.append('<tr><td colspan="3" class="text-center text-muted">No active workers</td></tr>');
-            } else {
-                data.slice(0, 5).forEach(function(worker) {
-                    const workerType = worker.name.includes('pinned') ? 'Pinned' : 'FIFO';
-                    const state = worker.state || 'idle';
-                    const stateClass = state === 'busy' ? 'worker-busy' : 'worker-idle';
-
-                    tbody.append(`
-                        <tr>
-                            <td>${worker.name || 'Unknown'}</td>
-                            <td>${workerType}</td>
-                            <td><span class="${stateClass}">${state}</span></td>
-                        </tr>
-                    `);
-                });
-            }
-
-            $('#workers-loading').hide();
-            $('#workers-container').show();
         })
         .fail(function() {
             $('#worker-count').text('?');
         });
 }
 
-function loadTasks() {
-    $.get('/api/tasks')
+function loadDevicesList() {
+    $.get('/api/devices')
         .done(function(data) {
-            let queuedCount = 0;
-            let runningCount = 0;
-            let tasks = [];
+            const devicesListBody = $('#devices-list-body');
+            devicesListBody.empty();
 
-            // Process tasks data
-            if (data.task_meta_list && Array.isArray(data.task_meta_list)) {
-                tasks = data.task_meta_list;
-            } else if (Array.isArray(data)) {
-                tasks = data;
-            }
-
-            tasks.forEach(function(task) {
-                const status = task.status || task.task_status;
-                if (status === 'queued' || status === 'started') {
-                    if (status === 'queued') queuedCount++;
-                    if (status === 'started') runningCount++;
-                }
-            });
-
-            $('#queued-count').text(queuedCount);
-            $('#running-count').text(runningCount);
-
-            // Update recent tasks table
-            const tbody = $('#recent-tasks-body');
-            tbody.empty();
-
-            if (tasks.length === 0) {
-                tbody.append('<tr><td colspan="3" class="text-center text-muted">No recent tasks</td></tr>');
-            } else {
-                tasks.slice(0, 5).forEach(function(task) {
-                    const taskId = task.task_id || task.id || 'Unknown';
-                    const status = task.status || task.task_status || 'unknown';
-                    const created = task.created_on || task.enqueued_at || 'N/A';
-
-                    let statusBadge = 'secondary';
-                    if (status === 'queued') statusBadge = 'badge-queued';
-                    else if (status === 'started' || status === 'running') statusBadge = 'badge-running';
-                    else if (status === 'finished' || status === 'completed') statusBadge = 'badge-completed';
-                    else if (status === 'failed') statusBadge = 'badge-failed';
-
-                    const shortId = taskId.length > 10 ? taskId.substring(0, 10) + '...' : taskId;
-                    const createdDate = created !== 'N/A' ? new Date(created).toLocaleString() : 'N/A';
-
-                    tbody.append(`
-                        <tr style="cursor: pointer;" onclick="window.location.href='/monitor'">
-                            <td><small class="font-monospace">${shortId}</small></td>
-                            <td><span class="badge ${statusBadge}">${status}</span></td>
-                            <td><small>${createdDate}</small></td>
-                        </tr>
+            if (data.success && data.devices && data.devices.length > 0) {
+                // Show first 30 devices
+                data.devices.slice(0, 30).forEach(function(device) {
+                    devicesListBody.append(`
+                        <a href="/deploy" class="list-group-item list-group-item-action py-2">
+                            <i class="fas fa-server text-primary"></i> ${device.name}
+                        </a>
                     `);
                 });
-            }
 
-            $('#recent-tasks-loading').hide();
-            $('#recent-tasks-container').show();
+                $('#devices-list-loading').hide();
+                $('#devices-list-container').show();
+            } else {
+                devicesListBody.html('<p class="text-center text-muted mb-0">No devices found</p>');
+                $('#devices-list-loading').hide();
+                $('#devices-list-container').show();
+            }
+        })
+        .fail(function() {
+            $('#devices-list-body').html('<p class="text-center text-danger mb-0">Error loading devices</p>');
+            $('#devices-list-loading').hide();
+            $('#devices-list-container').show();
+        });
+}
+
+function loadTasks() {
+    // Fetch task metadata first
+    $.get('/api/tasks/metadata')
+        .done(function(metadataResponse) {
+            const metadata = metadataResponse.metadata || {};
+
+            $.get('/api/tasks')
+                .done(function(data) {
+                    // Netpalm returns: {status: 'success', data: {task_id: ['id1', 'id2']}}
+                    let taskIds = [];
+                    if (data.data && data.data.task_id && Array.isArray(data.data.task_id)) {
+                        taskIds = data.data.task_id;
+                    }
+
+                    if (taskIds.length === 0) {
+                        $('#queued-count').text(0);
+                        $('#running-count').text(0);
+                        $('#recent-tasks-body').html('<tr><td colspan="3" class="text-center text-muted">No recent tasks</td></tr>');
+                        $('#recent-tasks-loading').hide();
+                        $('#recent-tasks-container').show();
+                        return;
+                    }
+
+                    let queuedCount = 0;
+                    let runningCount = 0;
+                    const recentTasks = [];
+                    let fetchedCount = 0;
+
+                    // Fetch details for first 5 tasks
+                    taskIds.slice(0, 5).forEach(function(taskId) {
+                        $.get('/api/task/' + taskId)
+                            .done(function(taskResponse) {
+                                const task = taskResponse.data || taskResponse;
+                                const status = task.task_status || task.status || 'unknown';
+
+                                fetchedCount++;
+
+                                // Count by status
+                                if (status === 'queued') queuedCount++;
+                                else if (status === 'started' || status === 'running') runningCount++;
+
+                                // Get device name from metadata
+                                const deviceName = metadata[taskId]?.device_name || 'Unknown Device';
+
+                                recentTasks.push({
+                                    taskId: taskId,
+                                    deviceName: deviceName,
+                                    status: status,
+                                    created: task.created_on
+                                });
+
+                                if (fetchedCount === Math.min(taskIds.length, 5)) {
+                                    displayRecentTasks(recentTasks, queuedCount, runningCount);
+                                }
+                            })
+                            .fail(function() {
+                                fetchedCount++;
+                                if (fetchedCount === Math.min(taskIds.length, 5)) {
+                                    displayRecentTasks(recentTasks, queuedCount, runningCount);
+                                }
+                            });
+                    });
+
+                    // Also count all tasks for accurate queue/running counts
+                    taskIds.forEach(function(taskId) {
+                        $.get('/api/task/' + taskId)
+                            .done(function(taskResponse) {
+                                const task = taskResponse.data || taskResponse;
+                                const status = task.task_status || task.status || 'unknown';
+
+                                if (status === 'queued') {
+                                    queuedCount++;
+                                    $('#queued-count').text(queuedCount);
+                                } else if (status === 'started' || status === 'running') {
+                                    runningCount++;
+                                    $('#running-count').text(runningCount);
+                                }
+                            });
+                    });
+                })
+                .fail(function() {
+                    $('#queued-count').text('?');
+                    $('#running-count').text('?');
+                    $('#recent-tasks-loading').hide();
+                    $('#recent-tasks-container').show();
+                });
         })
         .fail(function() {
             $('#queued-count').text('?');
             $('#running-count').text('?');
+            $('#recent-tasks-loading').hide();
+            $('#recent-tasks-container').show();
         });
 }
 
+function displayRecentTasks(tasks, queuedCount, runningCount) {
+    $('#queued-count').text(queuedCount);
+    $('#running-count').text(runningCount);
+
+    const tbody = $('#recent-tasks-body');
+    tbody.empty();
+
+    if (tasks.length === 0) {
+        tbody.append('<tr><td colspan="3" class="text-center text-muted">No recent tasks</td></tr>');
+    } else {
+        tasks.forEach(function(task) {
+            const status = task.status;
+            let statusBadge = 'secondary';
+            if (status === 'queued') statusBadge = 'badge-queued';
+            else if (status === 'started' || status === 'running') statusBadge = 'badge-running';
+            else if (status === 'finished' || status === 'completed') statusBadge = 'badge-completed';
+            else if (status === 'failed') statusBadge = 'badge-failed';
+
+            const deviceName = task.deviceName || 'Unknown Device';
+            const createdDate = task.created ? new Date(task.created).toLocaleString() : 'N/A';
+
+            tbody.append(`
+                <tr style="cursor: pointer;" onclick="window.location.href='/monitor'">
+                    <td><small>${deviceName}</small></td>
+                    <td><span class="badge ${statusBadge}">${status}</span></td>
+                    <td><small>${createdDate}</small></td>
+                </tr>
+            `);
+        });
+    }
+
+    $('#recent-tasks-loading').hide();
+    $('#recent-tasks-container').show();
+}
+
 function loadDeviceCount() {
-    $.get('/api/device-names')
+    $.get('/api/devices')
         .done(function(data) {
-            const deviceCount = data.names ? data.names.length : 0;
+            const deviceCount = data.devices ? data.devices.length : 0;
             $('#device-count').text(deviceCount);
         })
         .fail(function() {
