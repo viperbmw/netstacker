@@ -208,7 +208,7 @@ class NetpalmManager(Rediz):
     def redeploy_service_instance_state(self, service_id: str):
         """ redeploys the service instance """
         try:
-            self.set_service_instance_status(self.service_id, state="deploying")
+            self.set_service_instance_status(service_id, state="deploying")
             r = self.redeploy_service_instance(sid=service_id)
             resp = jsonable_encoder(r)
             return resp

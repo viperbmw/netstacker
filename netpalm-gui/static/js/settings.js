@@ -5,6 +5,7 @@ const DEFAULT_SETTINGS = {
     netbox_url: 'https://netbox-prprd.gi-nw.viasat.io',
     netbox_token: '',
     netbox_verify_ssl: false,
+    netbox_filters: [],
     default_username: '',
     default_password: '',
     netpalm_url: 'http://netpalm-controller:9000',
@@ -34,6 +35,16 @@ $(document).ready(function() {
             clearAllData();
         }
     });
+
+    // Add filter button
+    $('#add-filter-btn').click(function() {
+        addFilterRow();
+    });
+
+    // Test Netbox connection button
+    $('#test-netbox-btn').click(function() {
+        testNetboxConnection();
+    });
 });
 
 function loadSettings() {
@@ -50,14 +61,28 @@ function loadSettings() {
     $('#netpalm-api-key').val(settings.netpalm_api_key);
     $('#cache-ttl').val(settings.cache_ttl);
 
+    // Load filters
+    loadFilters(settings.netbox_filters || []);
+
     updateStatus(settings);
 }
 
 function saveSettings() {
+    // Collect filters
+    const filters = [];
+    $('.netbox-filter-row').each(function() {
+        const key = $(this).find('.filter-key').val().trim();
+        const value = $(this).find('.filter-value').val().trim();
+        if (key && value) {
+            filters.push({ key: key, value: value });
+        }
+    });
+
     const settings = {
         netbox_url: $('#netbox-url').val().trim(),
         netbox_token: $('#netbox-token').val().trim(),
         netbox_verify_ssl: $('#netbox-verify-ssl').is(':checked'),
+        netbox_filters: filters,
         default_username: $('#default-username').val().trim(),
         default_password: $('#default-password').val().trim(),
         netpalm_url: $('#netpalm-url').val().trim(),
@@ -113,6 +138,9 @@ function resetToDefaults() {
     $('#netpalm-url').val(DEFAULT_SETTINGS.netpalm_url);
     $('#netpalm-api-key').val(DEFAULT_SETTINGS.netpalm_api_key);
     $('#cache-ttl').val(DEFAULT_SETTINGS.cache_ttl);
+
+    // Clear filters
+    loadFilters([]);
 
     // Save defaults
     localStorage.setItem('netpalm_gui_settings', JSON.stringify(DEFAULT_SETTINGS));
@@ -181,6 +209,177 @@ function showNotification(message, type) {
     setTimeout(function() {
         alert.alert('close');
     }, 3000);
+}
+
+// Filter management functions
+function loadFilters(filters) {
+    const container = $('#netbox-filters-container');
+    container.empty();
+
+    if (filters.length === 0) {
+        // Add one empty filter by default
+        addFilterRow();
+    } else {
+        filters.forEach(function(filter) {
+            addFilterRow(filter.key, filter.value);
+        });
+    }
+}
+
+function addFilterRow(key = '', value = '') {
+    const container = $('#netbox-filters-container');
+    const rowId = 'filter-row-' + Date.now();
+
+    const row = $(`
+        <div class="row mb-2 netbox-filter-row" id="${rowId}">
+            <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm filter-key" placeholder="Filter key (e.g., tag)" value="${key}">
+            </div>
+            <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm filter-value" placeholder="Filter value (e.g., production)" value="${value}">
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-filter-btn w-100" data-row-id="${rowId}">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `);
+
+    container.append(row);
+
+    // Attach remove handler
+    row.find('.remove-filter-btn').on('click', function() {
+        const rowIdToRemove = $(this).data('row-id');
+        $('#' + rowIdToRemove).remove();
+
+        // If no filters left, add one empty
+        if ($('.netbox-filter-row').length === 0) {
+            addFilterRow();
+        }
+    });
+}
+
+function testNetboxConnection() {
+    const btn = $('#test-netbox-btn');
+    const resultDiv = $('#netbox-test-result');
+
+    // Get current values from form
+    const netboxUrl = $('#netbox-url').val().trim();
+    const netboxToken = $('#netbox-token').val().trim();
+    const verifySSL = $('#netbox-verify-ssl').is(':checked');
+
+    // Collect current filters from the form
+    const filters = [];
+    $('.netbox-filter-row').each(function() {
+        const key = $(this).find('.filter-key').val().trim();
+        const value = $(this).find('.filter-value').val().trim();
+        if (key && value) {
+            filters.push({ key: key, value: value });
+        }
+    });
+
+    if (!netboxUrl) {
+        resultDiv.html('<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Please enter a Netbox URL first</div>').show();
+        return;
+    }
+
+    // Disable button and show loading
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Testing...');
+
+    let loadingMsg = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Connecting to Netbox...';
+    if (filters.length > 0) {
+        loadingMsg += '<br><small class="text-muted">Testing with ' + filters.length + ' filter(s)</small>';
+    }
+    loadingMsg += '</div>';
+    resultDiv.html(loadingMsg).show();
+
+    // Send test request
+    $.ajax({
+        url: '/api/test-netbox',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            netbox_url: netboxUrl,
+            netbox_token: netboxToken,
+            verify_ssl: verifySSL,
+            filters: filters
+        }),
+        timeout: 35000  // Increased to 35 seconds
+    })
+    .done(function(data) {
+        if (data.success) {
+            resultDiv.html(`
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> <strong>Connection Successful!</strong><br>
+                    <small>Found ${data.device_count} devices in Netbox</small><br>
+                    <small class="text-muted">Response time: ${data.response_time || 'N/A'}</small>
+                </div>
+                <details class="mt-2">
+                    <summary class="text-muted small" style="cursor: pointer;">
+                        <i class="fas fa-info-circle"></i> Show API Details
+                    </summary>
+                    <div class="card card-body bg-light mt-2">
+                        <p class="mb-1"><strong>API URL:</strong></p>
+                        <code class="small">${data.api_url || 'N/A'}</code>
+                        <p class="mb-1 mt-2"><strong>SSL Verification:</strong> ${data.verify_ssl ? 'Enabled' : 'Disabled'}</p>
+                        <p class="mb-0"><strong>Using Token:</strong> ${data.has_token ? 'Yes' : 'No (Public access)'}</p>
+                    </div>
+                </details>
+            `);
+        } else {
+            resultDiv.html(`
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i> <strong>Connection Failed</strong><br>
+                    <small>${data.error || 'Unknown error'}</small>
+                </div>
+                <details class="mt-2">
+                    <summary class="text-muted small" style="cursor: pointer;">
+                        <i class="fas fa-info-circle"></i> Show Debug Details
+                    </summary>
+                    <div class="card card-body bg-light mt-2">
+                        <p class="mb-1"><strong>API URL:</strong></p>
+                        <code class="small">${data.api_url || 'N/A'}</code>
+                        ${data.status_code ? '<p class="mb-1 mt-2"><strong>HTTP Status:</strong> ' + data.status_code + '</p>' : ''}
+                        ${data.details ? '<p class="mb-0 mt-2"><strong>Technical Details:</strong><br><small>' + data.details + '</small></p>' : ''}
+                    </div>
+                </details>
+            `);
+        }
+    })
+    .fail(function(xhr) {
+        let errorMsg = 'Connection failed';
+        let apiUrl = netboxUrl + '/api/dcim/devices/?brief=true&limit=10';
+        let details = '';
+
+        if (xhr.responseJSON) {
+            errorMsg = xhr.responseJSON.error || errorMsg;
+            apiUrl = xhr.responseJSON.api_url || apiUrl;
+            details = xhr.responseJSON.details || '';
+        } else if (xhr.statusText) {
+            errorMsg = xhr.statusText;
+        }
+
+        resultDiv.html(`
+            <div class="alert alert-danger">
+                <i class="fas fa-times-circle"></i> <strong>Connection Failed</strong><br>
+                <small>${errorMsg}</small>
+            </div>
+            <details class="mt-2">
+                <summary class="text-muted small" style="cursor: pointer;">
+                    <i class="fas fa-info-circle"></i> Show Debug Details
+                </summary>
+                <div class="card card-body bg-light mt-2">
+                    <p class="mb-1"><strong>API URL:</strong></p>
+                    <code class="small">${apiUrl}</code>
+                    ${details ? '<p class="mb-0 mt-2"><strong>Technical Details:</strong><br><small>' + details + '</small></p>' : ''}
+                </div>
+            </details>
+        `);
+    })
+    .always(function() {
+        btn.prop('disabled', false).html('<i class="fas fa-plug"></i> Test Netbox Connection');
+    });
 }
 
 // Export getSettings for use in other pages

@@ -97,31 +97,39 @@ class NetboxClient:
                 'Content-Type': 'application/json'
             })
 
-    def get_devices(self, brief: bool = True, limit: int = 1000, manufacturer_ids: list = None) -> List[Dict]:
+    def get_devices(self, brief: bool = True, limit: int = 1000, manufacturer_ids: list = None, filters: list = None) -> List[Dict]:
         """
         Fetch all devices from Netbox
 
         Args:
             brief: Use brief format for faster response
             limit: Number of results per page (default 1000 for faster pagination)
-            manufacturer_ids: List of manufacturer IDs to filter (default: [7, 1, 5, 3])
+            manufacturer_ids: List of manufacturer IDs to filter (optional, no default)
+            filters: List of filter dicts with 'key' and 'value' (e.g., [{'key': 'tag', 'value': 'production'}])
+                     Supports multiple filters with same key (e.g., multiple manufacturer_id filters)
 
         Returns:
             List of device dictionaries with name, id, and other metadata
         """
         try:
-            # Default to specific manufacturers if not provided
-            if manufacturer_ids is None:
-                manufacturer_ids = [7, 1, 5, 3]
-
-            # Build query string with multiple manufacturer_id parameters
+            # Build query string
             query_parts = []
             if brief:
                 query_parts.append('brief=true')
             if limit:
                 query_parts.append(f'limit={limit}')
-            for mid in manufacturer_ids:
-                query_parts.append(f'manufacturer_id={mid}')
+
+            # Only add manufacturer_ids if explicitly provided
+            if manufacturer_ids:
+                for mid in manufacturer_ids:
+                    query_parts.append(f'manufacturer_id={mid}')
+
+            # Add custom filters from settings (supports multiple values for same key)
+            if filters:
+                for f in filters:
+                    if isinstance(f, dict) and 'key' in f and 'value' in f:
+                        query_parts.append(f"{f['key']}={f['value']}")
+                log.info(f"Applying Netbox filters: {filters}")
 
             url = f"{self.base_url}/api/dcim/devices/?{'&'.join(query_parts)}"
 
@@ -185,23 +193,23 @@ class NetboxClient:
             log.error(f"Error fetching device {device_name}: {e}")
             return {}
 
-    def get_devices_with_details(self) -> List[Dict]:
+    def get_devices_with_details(self, filters: list = None) -> List[Dict]:
         """
         Get devices with relevant details for the GUI
         Uses brief format for faster response
-        Filters to only show devices with "viasat.io" in the name
+        All filtering is now controlled via the filters parameter from settings
+
+        Args:
+            filters: Optional list of filter dicts with 'key' and 'value'
 
         Returns:
             List of dicts containing name, id, display, etc.
         """
-        devices = self.get_devices(brief=True)
+        devices = self.get_devices(brief=True, filters=filters)
         device_list = []
 
         for device in devices:
             device_name = device.get('name', '')
-            # Only include devices with "viasat.io" in the name
-            if 'viasat.io' not in device_name:
-                continue
 
             # Brief format returns: id, url, display, name, description
             device_list.append({

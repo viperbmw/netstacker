@@ -26,7 +26,22 @@ function loadWorkerCount() {
 }
 
 function loadDevicesList() {
-    $.get('/api/devices')
+    // Get filters from settings
+    let filters = [];
+    try {
+        const settings = JSON.parse(localStorage.getItem('netpalm_gui_settings') || '{}');
+        filters = settings.netbox_filters || [];
+    } catch (e) {
+        console.error('Error reading filters from settings:', e);
+    }
+
+    // Make POST request with filters
+    $.ajax({
+        url: '/api/devices',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ filters: filters })
+    })
         .done(function(data) {
             const devicesListBody = $('#devices-list-body');
             devicesListBody.empty();
@@ -187,7 +202,22 @@ function displayRecentTasks(tasks, queuedCount, runningCount) {
 }
 
 function loadDeviceCount() {
-    $.get('/api/devices')
+    // Get filters from settings
+    let filters = [];
+    try {
+        const settings = JSON.parse(localStorage.getItem('netpalm_gui_settings') || '{}');
+        filters = settings.netbox_filters || [];
+    } catch (e) {
+        console.error('Error reading filters from settings:', e);
+    }
+
+    // Make POST request with filters
+    $.ajax({
+        url: '/api/devices',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ filters: filters })
+    })
         .done(function(data) {
             const deviceCount = data.devices ? data.devices.length : 0;
             $('#device-count').text(deviceCount);

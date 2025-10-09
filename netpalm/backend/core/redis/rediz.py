@@ -746,9 +746,20 @@ class Rediz:
         for sid in self.base_connection.scan_iter("*_service_instance"):
             sid_str = sid.decode("utf-8")
             parsed_sid = sid_str.replace('1_', '').replace('_service_instance', '')
-            sid_data = json.loads(self.fetch_service_instance(parsed_sid))
-            if sid_data:
-                result.append(sid_data["service_meta"])
+            try:
+                fetched = self.fetch_service_instance(parsed_sid)
+                if fetched and fetched != False:
+                    sid_data = json.loads(fetched)
+                    if sid_data and "service_meta" in sid_data:
+                        result.append(sid_data["service_meta"])
+                else:
+                    # Corrupt instance, delete it
+                    log.warning(f"Deleting corrupt service instance: {sid_str}")
+                    self.base_connection.delete(sid)
+            except (json.JSONDecodeError, TypeError) as e:
+                # Corrupt data, delete it
+                log.warning(f"Deleting corrupt service instance {sid_str}: {e}")
+                self.base_connection.delete(sid)
         return result
 
     def fetch_pinned_store(self):

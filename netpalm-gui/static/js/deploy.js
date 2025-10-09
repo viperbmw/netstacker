@@ -78,7 +78,22 @@ $(document).ready(function() {
 });
 
 function loadDevices() {
-    $.get('/api/devices')
+    // Get filters from settings
+    let filters = [];
+    try {
+        const settings = JSON.parse(localStorage.getItem('netpalm_gui_settings') || '{}');
+        filters = settings.netbox_filters || [];
+    } catch (e) {
+        console.error('Error reading filters from settings:', e);
+    }
+
+    // Make POST request with filters
+    $.ajax({
+        url: '/api/devices',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ filters: filters })
+    })
         .done(function(data) {
             if (data.success && data.devices) {
                 populateDeviceDropdowns(data.devices);

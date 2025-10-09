@@ -39,6 +39,47 @@
                         <label class="form-check-label" for="netbox-verify-ssl">Verify SSL certificates</label>
                     </div>
 
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="test-netbox-btn">
+                            <i class="fas fa-plug"></i> Test Netbox Connection
+                        </button>
+                        <div id="netbox-test-result" class="mt-2" style="display: none;"></div>
+                    </div>
+
+                    <!-- Netbox Device Filters -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Netbox Device Filters</h6>
+                    <p class="text-muted small mb-3">
+                        <i class="fas fa-filter"></i> Filter which devices are shown from Netbox. Add multiple filters to narrow down your device list.
+                        <a href="#" data-bs-toggle="collapse" data-bs-target="#filter-help" class="text-decoration-none">
+                            <i class="fas fa-question-circle"></i> View Examples
+                        </a>
+                    </p>
+
+                    <div class="collapse mb-3" id="filter-help">
+                        <div class="card card-body bg-light">
+                            <p class="mb-2"><strong>Common Filter Examples:</strong></p>
+                            <ul class="small mb-0">
+                                <li><code>tag=production</code> - Devices with "production" tag</li>
+                                <li><code>name__ic=router</code> - Devices with "router" in name (case-insensitive)</li>
+                                <li><code>site=datacenter-1</code> - Devices at specific site</li>
+                                <li><code>status=active</code> - Only active devices</li>
+                                <li><code>role=access-switch</code> - Devices with specific role</li>
+                                <li><code>manufacturer=cisco</code> - Filter by manufacturer</li>
+                            </ul>
+                            <p class="small mt-2 mb-0 text-muted">
+                                Filters use Netbox API syntax. Multiple filters are combined with AND logic.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div id="netbox-filters-container">
+                        <!-- Filters will be dynamically added here -->
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="add-filter-btn">
+                        <i class="fas fa-plus"></i> Add Filter
+                    </button>
+
                     <!-- Default Credentials -->
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Default Device Credentials</h6>
 

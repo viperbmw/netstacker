@@ -6,6 +6,11 @@ let selectedDevices = [];
 $(document).ready(function() {
     loadDevices();
 
+    // Clear cache button
+    $('#clear-cache-btn').click(function() {
+        clearCacheAndReload();
+    });
+
     // Search filter
     $('#device-search').on('input', function() {
         const searchTerm = $(this).val().toLowerCase();
@@ -93,7 +98,25 @@ function loadDevices() {
     $('#devices-loading').show();
     $('#devices-container').hide();
 
-    $.get('/api/devices')
+    // Get filters from settings
+    let filters = [];
+    try {
+        const settings = JSON.parse(localStorage.getItem('netpalm_gui_settings') || '{}');
+        filters = settings.netbox_filters || [];
+    } catch (e) {
+        console.error('Error reading filters from settings:', e);
+    }
+
+    // Show active filters in UI
+    showActiveFilters();
+
+    // Make POST request with filters
+    $.ajax({
+        url: '/api/devices',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ filters: filters })
+    })
         .done(function(data) {
             if (data.success && data.devices) {
                 allDevices = data.devices;
@@ -469,4 +492,44 @@ function updateBulkStatus(completed, successful, failed, total) {
         </div>
         ${completed === total ? '<div class="alert alert-success mt-3"><i class="fas fa-check"></i> Bulk operation completed!</div>' : ''}
     `);
+}
+
+function clearCacheAndReload() {
+    const btn = $('#clear-cache-btn');
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Clearing...');
+
+    $.ajax({
+        url: '/api/devices/clear-cache',
+        method: 'POST'
+    })
+    .done(function(data) {
+        if (data.success) {
+            console.log('Cache cleared successfully');
+            loadDevices();
+        } else {
+            alert('Failed to clear cache: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .fail(function() {
+        alert('Failed to clear cache');
+    })
+    .always(function() {
+        btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i> Clear Cache & Reload');
+    });
+}
+
+function showActiveFilters() {
+    try {
+        const settings = JSON.parse(localStorage.getItem('netpalm_gui_settings') || '{}');
+        const filters = settings.netbox_filters || [];
+
+        if (filters.length > 0) {
+            const filterText = filters.map(f => `${f.key}=${f.value}`).join(', ');
+            $('#filter-info').html(`(Filters: ${filterText})`);
+        } else {
+            $('#filter-info').html('(No filters)');
+        }
+    } catch (e) {
+        console.error('Error showing filters:', e);
+    }
 }
