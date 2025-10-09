@@ -4,12 +4,17 @@
  * Load default credentials from settings
  */
 function loadDefaultCredentials() {
-    if (window.getAppSettings) {
-        const settings = window.getAppSettings();
-        return {
-            username: settings.default_username || '',
-            password: settings.default_password || ''
-        };
+    try {
+        const stored = localStorage.getItem('netpalm_gui_settings');
+        if (stored) {
+            const settings = JSON.parse(stored);
+            return {
+                username: settings.default_username || '',
+                password: settings.default_password || ''
+            };
+        }
+    } catch (e) {
+        console.error('Error loading credentials from settings:', e);
     }
     return { username: '', password: '' };
 }

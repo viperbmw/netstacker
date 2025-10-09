@@ -543,7 +543,11 @@ def render_j2_template():
         result = response.json()
 
         # Extract rendered configuration from response
-        rendered_config = result.get('data', {}).get('task_result', {}).get('rendered_config', '')
+        task_result = result.get('data', {}).get('task_result', {})
+        rendered_config = task_result.get('template_render_result', '') or task_result.get('rendered_config', '')
+
+        if not rendered_config:
+            return jsonify({'success': False, 'error': 'No rendered configuration returned from template'}), 500
 
         return jsonify({'success': True, 'rendered_config': rendered_config})
     except Exception as e:
