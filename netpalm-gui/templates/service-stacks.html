@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Service Stacks - Netpalm GUI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-layer-group"></i> Service Stacks</h2>
+            <button class="btn btn-primary" id="create-stack-btn">
+                <i class="fas fa-plus"></i> Create Stack
+            </button>
+        </div>
+
+        <!-- Service Stacks List -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Available Service Stacks</h5>
+            </div>
+            <div class="card-body">
+                <div id="stacks-container">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Stack Modal -->
+<div class="modal fade" id="stackModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="stackModalTitle">Create Service Stack</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="stack-form">
+                    <input type="hidden" id="stack-id">
+
+                    <!-- Basic Information -->
+                    <div class="mb-3">
+                        <label for="stack-name" class="form-label">Stack Name *</label>
+                        <input type="text" class="form-control" id="stack-name" required placeholder="e.g., L3VPN Customer A">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="stack-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="stack-description" rows="2" placeholder="Brief description of this service stack"></textarea>
+                    </div>
+
+                    <!-- Shared Variables -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <label class="form-label mb-0">Shared Variables (Optional)</label>
+                                <small class="form-text text-muted d-block">Variables that will be available to all services in this stack</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-shared-var-btn">
+                                <i class="fas fa-plus"></i> Add Variable
+                            </button>
+                        </div>
+                        <div id="shared-vars-list" class="border rounded p-2 bg-light">
+                            <p class="text-muted text-center mb-0" id="no-shared-vars-msg"><small>No shared variables. Click "Add Variable" to add one.</small></p>
+                        </div>
+                    </div>
+
+                    <!-- Services in Stack -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label mb-0">Services *</label>
+                            <button type="button" class="btn btn-sm btn-success" id="add-service-btn">
+                                <i class="fas fa-plus"></i> Add Service
+                            </button>
+                        </div>
+                        <div id="services-list" class="border rounded p-3">
+                            <!-- Services will be added here dynamically -->
+                            <p class="text-muted text-center mb-0" id="no-services-msg">No services added yet. Click "Add Service" to begin.</p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-stack-btn">
+                    <i class="fas fa-save"></i> Save Stack
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stack Details Modal -->
+<div class="modal fade" id="stackDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="stackDetailsTitle">Stack Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="stackDetailsBody">
+                <!-- Stack details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="deploy-stack-details-btn">
+                    <i class="fas fa-rocket"></i> Deploy Stack
+                </button>
+                <button type="button" class="btn btn-info" id="validate-stack-details-btn">
+                    <i class="fas fa-check-circle"></i> Validate Stack
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Modal (reused from services page) -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusModalTitle">Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="statusModalBody">
+                <!-- Status content will be inserted here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/form-utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/service-stacks.js') }}"></script>
+{% endblock %}

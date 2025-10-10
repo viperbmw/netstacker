@@ -64,8 +64,11 @@ services:
         - NETBOX_URL=https://netbox-prprd.gi-nw.viasat.io
         - NETBOX_TOKEN=${NETBOX_TOKEN}
         - VERIFY_SSL=false
+        - TEMPLATE_DIR=/templates
       ports:
         - "8088:8088"
+      volumes:
+        - ./netpalm/backend/plugins/extensibles/j2_config_templates:/templates:ro
       networks:
         - "netpalm-network"
       depends_on:

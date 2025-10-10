@@ -55,6 +55,29 @@
                         <label for="template-name" class="form-label">Template Name</label>
                         <input type="text" class="form-control" id="template-name" placeholder="my-template.j2">
                     </div>
+
+                    <div class="mb-3">
+                        <label for="template-description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="template-description" placeholder="Brief description of what this template does">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="validation-template" class="form-label">Validation Template</label>
+                            <select class="form-select" id="validation-template">
+                                <option value="">None - use deployed config</option>
+                            </select>
+                            <small class="text-muted">Template to use for validation checks</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="delete-template-select" class="form-label">Delete Template</label>
+                            <select class="form-select" id="delete-template-select">
+                                <option value="">None - manual cleanup</option>
+                            </select>
+                            <small class="text-muted">Template to remove this configuration</small>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="template-content" class="form-label">Template Content</label>
                         <textarea class="form-control font-monospace" id="template-content" rows="20" placeholder="Enter Jinja2 template here..."></textarea>

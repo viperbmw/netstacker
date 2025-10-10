@@ -44,44 +44,60 @@ function renderServiceTemplates(templates) {
 
     // Auto-detect template descriptions from name
     templates.forEach(function(template) {
+        // Handle both string and object formats
+        const templateName = typeof template === 'string' ? template : template.name;
+        const templateDesc = typeof template === 'object' ? template.description : null;
+
         // Clean up template name for display
-        const displayName = template
+        const displayName = templateDesc || templateName
             .replace('.j2', '')
             .replace(/_/g, ' ')
             .replace(/\b\w/g, l => l.toUpperCase());
 
-        // Determine icon based on template name
+        // Determine icon and color based on template name
         let icon = 'fa-file-code';
+        let iconColor = 'text-secondary';
 
-        if (template.includes('vlan')) {
+        if (templateName.includes('vlan')) {
             icon = 'fa-network-wired';
-        } else if (template.includes('snmp')) {
+            iconColor = 'text-success';
+        } else if (templateName.includes('snmp')) {
             icon = 'fa-chart-line';
-        } else if (template.includes('interface') || template.includes('int')) {
+            iconColor = 'text-info';
+        } else if (templateName.includes('interface') || templateName.includes('int')) {
             icon = 'fa-ethernet';
-        } else if (template.includes('remove')) {
+            iconColor = 'text-primary';
+        } else if (templateName.includes('bgp') || templateName.includes('ospf') || templateName.includes('routing')) {
+            icon = 'fa-route';
+            iconColor = 'text-warning';
+        } else if (templateName.includes('acl') || templateName.includes('security')) {
+            icon = 'fa-shield-alt';
+            iconColor = 'text-danger';
+        } else if (templateName.includes('remove') || templateName.includes('delete')) {
             icon = 'fa-trash';
+            iconColor = 'text-danger';
         }
 
-        const card = `
-            <div class="col-md-4 col-lg-3 mb-2">
-                <div class="card service-template-card" style="cursor: pointer;">
-                    <div class="card-body p-2">
-                        <div class="d-flex align-items-center">
-                            <i class="fas ${icon} text-primary me-2"></i>
-                            <div class="flex-grow-1">
-                                <div class="fw-bold small">${displayName}</div>
-                                <small class="text-muted" style="font-size: 0.75rem;">${template}</small>
-                            </div>
-                            <button class="btn btn-sm btn-primary create-service-btn" data-template="${template}" title="Use Template">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                        </div>
-                    </div>
+        // Add badges for validation and delete templates
+        const hasValidation = template.validation_template ? '<i class="fas fa-check-circle text-success ms-1" title="Has validation"></i>' : '';
+        const hasDelete = template.delete_template ? '<i class="fas fa-trash-alt text-danger ms-1" title="Has delete"></i>' : '';
+
+        const badge = `
+            <div class="col-auto mb-2">
+                <div class="btn-group service-template-badge" role="group">
+                    <button class="btn btn-outline-secondary btn-sm d-flex align-items-center pe-2" style="border-radius: 20px 0 0 20px; border-right: none;">
+                        <i class="fas ${icon} ${iconColor} me-2"></i>
+                        <span class="text-truncate" style="max-width: 200px;">${displayName}</span>
+                        ${hasValidation}
+                        ${hasDelete}
+                    </button>
+                    <button class="btn btn-primary btn-sm create-service-btn" data-template="${templateName}" title="Use Template" style="border-radius: 0 20px 20px 0;">
+                        <i class="fas fa-plus"></i>
+                    </button>
                 </div>
             </div>
         `;
-        grid.append(card);
+        grid.append(badge);
     });
 
     $('.create-service-btn').on('click', function(e) {
@@ -148,9 +164,13 @@ function renderSimpleServiceForm(templateName, devices, allTemplates) {
             <label class="form-label">Reverse Template (Optional)</label>
             <select class="form-select" id="reverse-template-input">
                 <option value="">None - manual cleanup required</option>
-                ${allTemplates.filter(t => t.includes('remove') || t.includes('delete')).map(t =>
-                    `<option value="${t}">${t}</option>`
-                ).join('')}
+                ${allTemplates.filter(t => {
+                    const name = typeof t === 'string' ? t : t.name;
+                    return name.includes('remove') || name.includes('delete');
+                }).map(t => {
+                    const name = typeof t === 'string' ? t : t.name;
+                    return `<option value="${name}">${name}</option>`;
+                }).join('')}
             </select>
             <small class="text-muted">Template to remove the configuration when service is deleted</small>
         </div>
@@ -500,6 +520,11 @@ function createServiceInstance() {
             });
             bootstrap.Modal.getInstance(document.getElementById('createServiceModal')).hide();
             loadServiceInstances();
+
+            // Auto-check status after a few seconds to update from 'deploying' to 'deployed'
+            setTimeout(function() {
+                checkServiceStatusAuto(data.service_id);
+            }, 5000);
         } else {
             showStatus('error', data);
         }
@@ -508,6 +533,26 @@ function createServiceInstance() {
         $('#create-service-btn').prop('disabled', false).html('<i class="fas fa-rocket"></i> Create Service');
         const errorMsg = xhr.responseJSON?.error || 'Failed to create service instance';
         showStatus('error', { message: errorMsg });
+    });
+}
+
+function checkServiceStatusAuto(serviceId) {
+    // Silently check and update service status without showing notifications
+    $.ajax({
+        url: '/api/services/instances/' + encodeURIComponent(serviceId) + '/check_status',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({})
+    })
+    .done(function(data) {
+        if (data.success) {
+            // Reload service instances to show updated state
+            loadServiceInstances();
+        }
+    })
+    .fail(function(xhr) {
+        // Silent failure - don't bother the user
+        console.log('Auto status check failed:', xhr);
     });
 }
 
@@ -534,18 +579,26 @@ function validateServiceInstance(serviceId) {
         if (data.success) {
             if (data.valid) {
                 showStatus('success', {
-                    message: data.message || 'Configuration is present on device',
-                    task_id: data.task_id
+                    message: '✓ Validation Successful - All configuration lines are present on the device',
+                    task_id: data.task_id,
+                    details: 'Service configuration matches device running config'
                 });
             } else {
+                const missingCount = data.missing_lines ? data.missing_lines.length : 0;
                 showStatus('warning', {
-                    message: data.message || 'Configuration drift detected',
-                    details: 'Missing lines: ' + data.missing_lines.join(', ')
+                    message: '⚠ Configuration Drift Detected - ' + missingCount + ' line(s) missing from device',
+                    details: '<strong>Missing lines:</strong><br><ul class="mb-0">' +
+                        data.missing_lines.map(line => '<li><code>' + line + '</code></li>').join('') +
+                        '</ul>',
+                    task_id: data.task_id
                 });
             }
             loadServiceInstances(); // Reload to show updated validation status
         } else {
-            showStatus('error', data);
+            showStatus('error', {
+                message: 'Validation Failed',
+                error: data.error || 'Unknown error occurred'
+            });
         }
     })
     .fail(function(xhr) {
@@ -563,26 +616,38 @@ function deleteServiceInstance(serviceId) {
         password: settings.default_password
     };
 
+    showStatus('info', {
+        message: 'Deleting service...',
+        details: 'Removing configuration from device and cleaning up records. This may take a minute.'
+    });
+
     $.ajax({
         url: '/api/services/instances/' + encodeURIComponent(serviceId) + '/delete',
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify(payload)
+        data: JSON.stringify(payload),
+        timeout: 120000 // 2 minute timeout
     })
     .done(function(data) {
         if (data.success) {
             showStatus('success', {
                 message: data.message || 'Service deleted successfully!',
-                task_id: data.task_id
+                details: data.task_id ? `Delete task: ${data.task_id}` : null
             });
             loadServiceInstances();
         } else {
-            showStatus('error', data);
+            showStatus('error', {
+                message: 'Failed to delete service',
+                details: data.error
+            });
         }
     })
     .fail(function(xhr) {
         const errorMsg = xhr.responseJSON?.error || 'Failed to delete service instance';
-        showStatus('error', { message: errorMsg });
+        showStatus('error', {
+            message: 'Delete failed',
+            details: errorMsg
+        });
     });
 }
 
@@ -657,7 +722,7 @@ function renderServiceInstances(instances) {
     });
 
     $('.delete-service-btn').on('click', function() {
-        if (confirm('Are you sure you want to delete this service instance? This will remove the configuration from the device if a reverse template is defined.')) {
+        if (confirm('Are you sure you want to delete this service instance?\n\nThis will:\n- Remove the configuration from the device (if delete template is configured)\n- Delete the service record from the system\n\nThis action cannot be undone.')) {
             deleteServiceInstance($(this).data('service-id'));
         }
     });
@@ -773,21 +838,68 @@ function formatDate(dateString) {
 
 function showStatus(type, data) {
     const modal = new bootstrap.Modal(document.getElementById('statusModal'));
-    $('#statusModalTitle').text(type === 'success' ? 'Success' : 'Error');
 
-    let html = '';
-    if (type === 'success') {
-        html = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> ' + (data.message || 'Operation successful') + '</div>';
-        if (data.task_id) {
-            html += '<p><strong>Task ID:</strong> <code>' + data.task_id + '</code></p>';
-        }
-        if (data.service_id) {
-            html += '<p><strong>Service ID:</strong> <code>' + data.service_id + '</code></p>';
-        }
-    } else {
-        html = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> ' + (data.message || 'Operation failed') + '</div>';
+    // Set title based on status type
+    const titles = {
+        'success': 'Success',
+        'error': 'Error',
+        'warning': 'Warning',
+        'info': 'Information'
+    };
+    $('#statusModalTitle').text(titles[type] || 'Status');
+
+    // Set alert class and icon based on type
+    const alertClasses = {
+        'success': 'alert-success',
+        'error': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    };
+
+    const icons = {
+        'success': 'fa-check-circle',
+        'error': 'fa-exclamation-triangle',
+        'warning': 'fa-exclamation-circle',
+        'info': 'fa-info-circle'
+    };
+
+    const alertClass = alertClasses[type] || 'alert-info';
+    const icon = icons[type] || 'fa-info-circle';
+
+    let html = '<div class="alert ' + alertClass + '"><i class="fas ' + icon + '"></i> ' + (data.message || 'Operation completed') + '</div>';
+
+    // Add task ID if present
+    if (data.task_id) {
+        html += '<p><strong>Task ID:</strong> <code>' + data.task_id + '</code></p>';
+    }
+
+    // Add service ID if present
+    if (data.service_id) {
+        html += '<p><strong>Service ID:</strong> <code>' + data.service_id + '</code></p>';
+    }
+
+    // Add details if present (for validation drift)
+    if (data.details) {
+        html += '<div class="mt-3"><strong>Details:</strong><br><small class="text-muted">' + data.details + '</small></div>';
+    }
+
+    // Add error details if present
+    if (data.error && type === 'error') {
+        html += '<div class="mt-3"><strong>Error Details:</strong><br><code>' + data.error + '</code></div>';
     }
 
     $('#statusModalBody').html(html);
     modal.show();
+
+    // Ensure backdrop is properly removed when modal closes
+    const modalElement = document.getElementById('statusModal');
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        // Remove any lingering backdrops
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        // Restore body scroll
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
 }

@@ -1,8 +1,10 @@
 // Templates page JavaScript
 
 let currentTemplate = null;
+let currentTemplateMetadata = null;
 let isNewTemplate = false;
 let editor = null;
+let allTemplatesWithMetadata = [];
 
 $(document).ready(function() {
     // Initialize CodeMirror
@@ -62,14 +64,28 @@ function loadTemplateList() {
             templateList.empty();
 
             if (data.success && data.templates && data.templates.length > 0) {
+                // Store templates globally for metadata dropdowns
+                allTemplatesWithMetadata = data.templates;
+
+                // Populate template list
                 data.templates.forEach(function(template) {
+                    // Handle both string and object formats
+                    const templateName = typeof template === 'string' ? template : template.name;
+                    const hasValidation = template.validation_template ? '<i class="fas fa-check-circle text-success ms-2" title="Has validation template"></i>' : '';
+                    const hasDelete = template.delete_template ? '<i class="fas fa-trash-alt text-danger ms-1" title="Has delete template"></i>' : '';
+
                     const item = `
-                        <li class="list-group-item list-group-item-action template-item" data-name="${template}">
-                            <i class="fas fa-file-code"></i> ${template}
+                        <li class="list-group-item list-group-item-action template-item" data-name="${templateName}">
+                            <i class="fas fa-file-code"></i> ${templateName}
+                            ${hasValidation}
+                            ${hasDelete}
                         </li>
                     `;
                     templateList.append(item);
                 });
+
+                // Populate metadata dropdowns
+                populateMetadataDropdowns();
 
                 // Click handler for template items
                 $('.template-item').click(function() {
@@ -92,6 +108,20 @@ function loadTemplateList() {
         });
 }
 
+function populateMetadataDropdowns() {
+    const validationSelect = $('#validation-template');
+    const deleteSelect = $('#delete-template-select');
+
+    validationSelect.html('<option value="">None - use deployed config</option>');
+    deleteSelect.html('<option value="">None - manual cleanup</option>');
+
+    allTemplatesWithMetadata.forEach(function(template) {
+        const templateName = typeof template === 'string' ? template : template.name;
+        validationSelect.append(`<option value="${templateName}">${templateName}</option>`);
+        deleteSelect.append(`<option value="${templateName}">${templateName}</option>`);
+    });
+}
+
 function loadTemplate(templateName) {
     $.get('/api/templates/' + encodeURIComponent(templateName))
         .done(function(data) {
@@ -103,6 +133,24 @@ function loadTemplate(templateName) {
                 editor.refresh();
                 showEditor();
                 $('#delete-template-btn').show();
+
+                // Load metadata
+                const templateObj = allTemplatesWithMetadata.find(t => {
+                    const name = typeof t === 'string' ? t : t.name;
+                    return name === templateName;
+                });
+
+                if (templateObj && typeof templateObj === 'object') {
+                    currentTemplateMetadata = templateObj;
+                    $('#template-description').val(templateObj.description || '');
+                    $('#validation-template').val(templateObj.validation_template || '');
+                    $('#delete-template-select').val(templateObj.delete_template || '');
+                } else {
+                    currentTemplateMetadata = null;
+                    $('#template-description').val('');
+                    $('#validation-template').val('');
+                    $('#delete-template-select').val('');
+                }
             } else {
                 alert('Failed to load template content');
             }
@@ -177,12 +225,38 @@ function saveTemplate() {
     })
     .done(function(data) {
         if (data.success) {
-            alert('Template saved successfully!');
-            currentTemplate = templateName;
-            isNewTemplate = false;
-            $('#template-name').prop('disabled', true);
-            $('#delete-template-btn').show();
-            loadTemplateList();
+            // Save metadata
+            const templateNameNoExt = templateName.replace('.j2', '');
+            const metadata = {
+                description: $('#template-description').val().trim() || null,
+                validation_template: $('#validation-template').val() || null,
+                delete_template: $('#delete-template-select').val() || null
+            };
+
+            // Only save metadata if any field is set
+            if (metadata.description || metadata.validation_template || metadata.delete_template) {
+                $.ajax({
+                    url: '/api/templates/' + encodeURIComponent(templateNameNoExt) + '/metadata',
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(metadata)
+                })
+                .always(function() {
+                    alert('Template and metadata saved successfully!');
+                    currentTemplate = templateName;
+                    isNewTemplate = false;
+                    $('#template-name').prop('disabled', true);
+                    $('#delete-template-btn').show();
+                    loadTemplateList();
+                });
+            } else {
+                alert('Template saved successfully!');
+                currentTemplate = templateName;
+                isNewTemplate = false;
+                $('#template-name').prop('disabled', true);
+                $('#delete-template-btn').show();
+                loadTemplateList();
+            }
         } else {
             alert('Failed to save template: ' + (data.error || 'Unknown error'));
         }
