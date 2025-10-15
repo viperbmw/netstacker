@@ -1,9 +1,9 @@
 import pytest
 import requests
 import random
-from tests.integration.helper import NetpalmTestHelper
+from tests.integration.helper import NetstackerTestHelper
 
-helper = NetpalmTestHelper()
+helper = NetstackerTestHelper()
 
 
 @pytest.mark.script

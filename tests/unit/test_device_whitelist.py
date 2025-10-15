@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import pytest
 
-from netpalm.backend.core.security.whitelist import DeviceWhitelist, WhiteListRule
+from netstacker.backend.core.security.whitelist import DeviceWhitelist, WhiteListRule
 
 pytestmark = pytest.mark.whitelist
 

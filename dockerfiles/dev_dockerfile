@@ -6,5 +6,5 @@ RUN apt-get update \
     && mv ntc-templates ntc_templates \
     && pip3 install --upgrade pip
 
-ADD netpalm/requirements.txt /code/
+ADD netstacker/requirements.txt /code/
 RUN pip3 install -r /code/requirements.txt

@@ -1,6 +1,6 @@
 import sys
 
-from netpalm import netpalm_fifo_worker, netpalm_pinned_worker
+from netstacker import netstacker_fifo_worker, netstacker_pinned_worker
 
 
 def main(args):
@@ -10,10 +10,10 @@ def main(args):
         sys.exit(1)
 
     if worker_type == "pinned":
-        netpalm_pinned_worker.start_processworkerprocess()
+        netstacker_pinned_worker.start_processworkerprocess()
 
     else:
-        netpalm_fifo_worker.start_worker()
+        netstacker_fifo_worker.start_worker()
 
 
 if __name__ == "__main__":

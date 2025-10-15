@@ -2,8 +2,8 @@ import typing
 
 import pytest
 
-from netpalm.backend.core.confload import confload
-from netpalm.backend.core.utilities.textfsm.template import FSMTemplate
+from netstacker.backend.core.confload import confload
+from netstacker.backend.core.utilities.textfsm.template import FSMTemplate
 
 
 def test_template_object():

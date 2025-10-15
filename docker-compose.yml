@@ -2,80 +2,59 @@ version: "3.7"
 
 services:
 
-    netpalm-controller:
+    netstacker-controller:
       build:
           context: .
-          dockerfile: ./dockerfiles/netpalm_controller_dockerfile
+          dockerfile: ./dockerfiles/netstacker_controller_dockerfile
       environment:
           - NET_TEXTFSM=/usr/local/lib/python3.8/site-packages/ntc_templates/templates/
-          - NETPALM_CONFIG=/code/config/config.json
-          - NETPALM_LOG_CONFIG_FILENAME=/code/config/log-config.yml
+          - NETSTACKER_CONFIG=/code/config/config.json
+          - NETSTACKER_LOG_CONFIG_FILENAME=/code/config/log-config.yml
       ports:
           - "9000:9000"
       networks:
-          - "netpalm-network"
+          - "netstacker-network"
       depends_on:
           - redis
       restart: always
 
-    netpalm-worker-pinned:
+    netstacker-worker-pinned:
       build:
           context: .
-          dockerfile: ./dockerfiles/netpalm_pinned_worker_dockerfile
+          dockerfile: ./dockerfiles/netstacker_pinned_worker_dockerfile
       environment:
         - NET_TEXTFSM=/usr/local/lib/python3.8/site-packages/ntc_templates/templates/
-        - NETPALM_CONFIG=/code/config/config.json
-        - NETPALM_LOG_CONFIG_FILENAME=/code/config/log-config.yml
+        - NETSTACKER_CONFIG=/code/config/config.json
+        - NETSTACKER_LOG_CONFIG_FILENAME=/code/config/log-config.yml
       depends_on:
         - redis
       networks:
-      - "netpalm-network"
+      - "netstacker-network"
       restart: always
 
-    netpalm-worker-fifo:
+    netstacker-worker-fifo:
       build:
           context: .
-          dockerfile: ./dockerfiles/netpalm_fifo_worker_dockerfile
+          dockerfile: ./dockerfiles/netstacker_fifo_worker_dockerfile
       environment:
         - NET_TEXTFSM=/usr/local/lib/python3.8/site-packages/ntc_templates/templates/
-        - NETPALM_CONFIG=/code/config/config.json
-        - NETPALM_LOG_CONFIG_FILENAME=/code/config/log-config.yml
+        - NETSTACKER_CONFIG=/code/config/config.json
+        - NETSTACKER_LOG_CONFIG_FILENAME=/code/config/log-config.yml
       depends_on:
         - redis
       networks:
-      - "netpalm-network"
+      - "netstacker-network"
       restart: always
 
     redis:
       build:
         context: .
-        dockerfile: ./dockerfiles/netpalm_redis_dockerfile
+        dockerfile: ./dockerfiles/netstacker_redis_dockerfile
       networks:
-      - "netpalm-network"
-      restart: always
-
-    netpalm-gui:
-      build:
-        context: ./netpalm-gui
-        dockerfile: Dockerfile
-      environment:
-        - NETPALM_API_URL=http://netpalm-controller:9000
-        - NETPALM_API_KEY=2a84465a-cf38-46b2-9d86-b84Q7d57f288
-        - NETBOX_URL=https://netbox-prprd.gi-nw.viasat.io
-        - NETBOX_TOKEN=${NETBOX_TOKEN}
-        - VERIFY_SSL=false
-        - TEMPLATE_DIR=/templates
-      ports:
-        - "8088:8088"
-      volumes:
-        - ./netpalm/backend/plugins/extensibles/j2_config_templates:/templates:ro
-      networks:
-        - "netpalm-network"
-      depends_on:
-        - netpalm-controller
+      - "netstacker-network"
       restart: always
 
 networks:
 
-  netpalm-network:
-    name: "netpalm-network"
+  netstacker-network:
+    name: "netstacker-network"

@@ -2,7 +2,7 @@
 version: 1
 filters:
     secret_scrub:
-      (): netpalm.backend.core.confload.confload.ScrubFilter
+      (): netstacker.backend.core.confload.confload.ScrubFilter
 
 formatters:
   simple:
@@ -24,11 +24,11 @@ loggers:
   #    level: WARN
   #  rq:
   #    level: WARN
-  netpalm_worker_common:
+  netstacker_worker_common:
     level: DEBUG
-  netpalm_worker_pinned:
+  netstacker_worker_pinned:
     level: DEBUG
-  netpalm_worker_fifo:
+  netstacker_worker_fifo:
     level: DEBUG
   backend:
     level: DEBUG

@@ -4,11 +4,11 @@ from typing import List, Union
 
 import pytest
 
-from .helper import NetpalmTestHelper
+from .helper import NetstackerTestHelper
 from .test_getconfig_cisgo import CisgoHelper
 
 log = logging.getLogger(__name__)
-helper = NetpalmTestHelper()
+helper = NetstackerTestHelper()
 
 CISGO_DEFAULT_HOSTNAME = "cisshgo1000v"
 CISGO_NEW_HOSTNAME = CISGO_DEFAULT_HOSTNAME.upper() + str(

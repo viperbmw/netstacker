@@ -3,9 +3,9 @@ from unittest.mock import Mock
 import pytest
 from pytest_mock import MockerFixture
 
-from netpalm.exceptions import NetpalmMetaProcessedException
-from netpalm.backend.plugins.drivers.netmiko.netmiko_drvr import netmko
-from netpalm.backend.core.calls.getconfig.exec_command import exec_command
+from netstacker.exceptions import NetstackerMetaProcessedException
+from netstacker.backend.plugins.drivers.netmiko.netmiko_drvr import netmko
+from netstacker.backend.core.calls.getconfig.exec_command import exec_command
 
 NETMIKO_COMMANDS = {
     "show run": """running config\na line\nanother line
@@ -24,7 +24,7 @@ NETMIKO_C_ARGS = {
 
 @pytest.fixture()
 def rq_job(mocker: MockerFixture) -> MockerFixture:
-    mocked_get_current_job = mocker.patch('netpalm.backend.core.utilities.rediz_meta.get_current_job')
+    mocked_get_current_job = mocker.patch('netstacker.backend.core.utilities.rediz_meta.get_current_job')
     mocked_job = Mock()
     mocked_job.meta = {"errors": []}
     mocked_get_current_job.return_value = mocked_job
@@ -32,7 +32,7 @@ def rq_job(mocker: MockerFixture) -> MockerFixture:
 
 @pytest.fixture()
 def netmiko_connection_handler(mocker: MockerFixture) -> MockerFixture:
-    mocked_CH = mocker.patch('netpalm.backend.plugins.drivers.netmiko.netmiko_drvr.ConnectHandler', autospec=True)
+    mocked_CH = mocker.patch('netstacker.backend.plugins.drivers.netmiko.netmiko_drvr.ConnectHandler', autospec=True)
 
     mocked_session = Mock()
 
@@ -128,7 +128,7 @@ def test_netmiko_gc_exec_command_post_checks(netmiko_connection_handler: Mock, r
     for command, value in list(NETMIKO_COMMANDS.items())[:1]:
         assert result[command] == value.splitlines()
 
-    with pytest.raises(NetpalmMetaProcessedException):
+    with pytest.raises(NetstackerMetaProcessedException):
         result = exec_command(library="netmiko", command=command, connection_args=NETMIKO_C_ARGS, post_checks=[bad_post_check])
 
 
@@ -145,5 +145,5 @@ def test_netmiko_gc_exec_command_ttp(netmiko_connection_handler: Mock, rq_job):
     with pytest.raises(AssertionError):
         netmiko_connection_handler.session.send_command.assert_called_once_with(command, **netmiko_kwarg)
 
-    netmiko_kwarg["ttp_template"] = "netpalm/backend/plugins/extensibles/ttp_templates/asdf.ttp"
+    netmiko_kwarg["ttp_template"] = "netstacker/backend/plugins/extensibles/ttp_templates/asdf.ttp"
     netmiko_connection_handler.session.send_command.assert_called_once_with(command, **netmiko_kwarg)

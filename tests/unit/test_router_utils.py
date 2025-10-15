@@ -6,10 +6,10 @@ from random import randint
 import pytest
 from fastapi import HTTPException
 
-from netpalm.backend.core.confload import confload
-from netpalm.backend.core.models.models import GetConfig
-from netpalm.backend.core.redis import rediz
-from netpalm.routers.route_utils import cacheable_model, HttpErrorHandler, cache_key_from_req_data, poison_host_cache, \
+from netstacker.backend.core.confload import confload
+from netstacker.backend.core.models.models import GetConfig
+from netstacker.backend.core.redis import rediz
+from netstacker.routers.route_utils import cacheable_model, HttpErrorHandler, cache_key_from_req_data, poison_host_cache, \
     serialized_for_hash
 
 log = logging.getLogger(__name__)
@@ -47,42 +47,6 @@ cache_key_data = [
         "expected_cache_key": "foo.com:None:show ip int bri:"
                               "4f86e603dd721d1a93d78a058ed49c07fa04a222b5409f7d27cfcd3e76e4d665"
     },
-    {
-        "library": "ncclient",
-        "connection_args": {
-            "host": "10.0.2.39",
-            "username": "REAL USERNAME",
-            "password": "REAL PASSWORD",
-            "port": 830,
-            "hostkey_verify": False
-        },
-        "args": {
-            "source": "running",
-            "filter": "<filter type='subtree'><System xmlns='http://cisco.com/ns/yang/cisco-nx-os-device'>"
-                      "</System></filter>"
-        },
-        "queue_strategy": "fifo",
-        "expected_cache_key": "10.0.2.39:830:<filter type='subtree'>"
-                              "<System xmlns='http://cisco.com/ns/yang/cisco-nx-os-device'></System></filter>:"
-                              "f2cdfc252eec75496ee9817d5f1efe1ca1df43f259b11864daf5d3b639ef70d5"
-    },
-    {
-        "connection_args": {
-            "device_type": "cisco_ios",
-            "host": "10.0.2.23",
-            "username": "{{device_username}}",
-            "password": "{{device_password}}"
-        },
-        "library": "napalm",
-        "command": [
-            "show run | i hostname",
-            "show ip int brief"
-        ],
-        "webhook": True,
-        "queue_strategy": "fifo",
-        "expected_cache_key": "10.0.2.23:None:['show run | i hostname', 'show ip int brief']:"
-                              "cb5b0659cf349cf8cb49960ead9ba75adf216af4e1422d46f1c6ad64b8675ef8"
-    }
 ]
 
 
@@ -106,7 +70,7 @@ def test_http_error_handler_raises():
 
 
 def test_cache_disabled(monkeypatch):
-    monkeypatch.setenv("NETPALM_REDIS_CACHE_ENABLED", "FALSE")
+    monkeypatch.setenv("NETSTACKER_REDIS_CACHE_ENABLED", "FALSE")
     config = confload.initialize_config()
     redis_helper = rediz.Rediz(config)
     cache = redis_helper.cache
@@ -119,7 +83,7 @@ def test_cache_disabled(monkeypatch):
 
 @pytest.fixture(scope="function")
 def clean_cache_redis_helper(monkeypatch):
-    monkeypatch.setenv("NETPALM_REDIS_CACHE_ENABLED", "TRUE")
+    monkeypatch.setenv("NETSTACKER_REDIS_CACHE_ENABLED", "TRUE")
     config = confload.initialize_config()
     redis_helper = rediz.Rediz(config)
     redis_helper.cache.clear()
@@ -127,7 +91,7 @@ def clean_cache_redis_helper(monkeypatch):
 
 
 def test_cache_prefix_is_set(monkeypatch):
-    monkeypatch.setenv("NETPALM_REDIS_CACHE_KEY_PREFIX", "RCK")
+    monkeypatch.setenv("NETSTACKER_REDIS_CACHE_KEY_PREFIX", "RCK")
     config = confload.initialize_config()
     redis_helper = rediz.Rediz(config)
     assert redis_helper.cache.key_prefix == "RCK"

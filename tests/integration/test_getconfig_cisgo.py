@@ -3,10 +3,10 @@ from typing import List, Union
 
 import pytest
 
-from tests.integration.helper import NetpalmTestHelper
+from tests.integration.helper import NetstackerTestHelper
 
 log = logging.getLogger(__name__)
-helper = NetpalmTestHelper()
+helper = NetstackerTestHelper()
 
 CISGO_DEFAULT_HOSTNAME = "cisshgo1000v"
 
@@ -43,21 +43,6 @@ class CisgoHelper:
             "fast_cli": True,
             "default_enter": "\r\n",
         }
-
-    @property
-    def napalm_connection_args(self):
-        return {
-            "device_type": "cisco_ios",
-            "host": self.hostname,
-            "username": "admin",
-            "password": "admin",
-            "optional_args": {
-                "port": self.port_number,
-                "fast_cli": True,
-                # "default_enter": "\r\n"
-            }
-        }
-
 
 @pytest.fixture(scope="module")
 def cisgo_helper():
@@ -148,54 +133,6 @@ def test_getconfig_netmiko_multiple(cisgo_helper: CisgoHelper):
 
 @pytest.mark.getconfig
 @pytest.mark.cisgo
-def test_getconfig_napalm_multiple(cisgo_helper: CisgoHelper):
-    pl = {
-        "connection_args": cisgo_helper.napalm_connection_args,
-        "library": "napalm",
-        "command": ["show running-config", "show ip interface brief"]
-    }
-    res = helper.post_and_check('/getconfig', pl)
-    log.error(res)
-    assert len(res["show ip interface brief"]) > 1
-    assert hostname_from_config(res["show running-config"])
-    res = helper.post_and_check('/get', pl)
-    log.error(res)
-    assert len(res["show ip interface brief"]) > 1
-    assert hostname_from_config(res["show running-config"])
-
-
-@pytest.mark.getconfig
-@pytest.mark.cisgo
-def test_getconfig_napalm_getter(cisgo_helper: CisgoHelper):
-    pl = {
-        "library": "napalm",
-        "connection_args": cisgo_helper.napalm_connection_args,
-        "command": "get_facts"
-    }
-    res = helper.post_and_check('/getconfig', pl)
-    log.error(res["get_facts"])
-    assert res["get_facts"]["hostname"] == CISGO_DEFAULT_HOSTNAME
-    res = helper.post_and_check('/get', pl)
-    log.error(res["get_facts"])
-    assert res["get_facts"]["hostname"] == CISGO_DEFAULT_HOSTNAME
-
-
-@pytest.mark.getconfig
-@pytest.mark.cisgo
-def test_getconfig_napalm(cisgo_helper: CisgoHelper):
-    pl = {
-        "library": "napalm",
-        "connection_args": cisgo_helper.napalm_connection_args,
-        "command": "show running-config"
-    }
-    res = helper.post_and_check('/getconfig', pl)
-    assert hostname_from_config(res["show running-config"])
-    res = helper.post_and_check('/get', pl)
-    assert hostname_from_config(res["show running-config"])
-
-
-@pytest.mark.getconfig
-@pytest.mark.cisgo
 def test_getconfig_netmiko_post_check(cisgo_helper: CisgoHelper):
     pl = {
         "library": "netmiko",
@@ -247,27 +184,3 @@ def test_getconfig_netmiko_post_check_fails(cisgo_helper: CisgoHelper):
     assert len(errors) > 0
 
 
-@pytest.mark.getconfig
-@pytest.mark.cisgo
-def test_getconfig_napalm_post_check(cisgo_helper: CisgoHelper):
-    pl = {
-        "library": "napalm",
-        "connection_args": cisgo_helper.napalm_connection_args,
-        "command": "show run | i hostname",
-        "queue_strategy": "pinned",
-        "post_checks": [
-            {
-                "match_type": "include",
-                "get_config_args": {
-                    "command": "show running-config"
-                },
-                "match_str": [
-                    "hostname " + CISGO_DEFAULT_HOSTNAME
-                ]
-            }
-        ]
-    }
-    errors = helper.post_and_check_errors('/getconfig', pl)
-    assert len(errors) == 0
-    errors = helper.post_and_check_errors('/get', pl)
-    assert len(errors) == 0

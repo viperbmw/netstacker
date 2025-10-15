@@ -1,9 +1,9 @@
 import pytest
 import requests
 import json
-from tests.integration.helper import NetpalmTestHelper
+from tests.integration.helper import NetstackerTestHelper
 
-helper = NetpalmTestHelper()
+helper = NetstackerTestHelper()
 
 @pytest.mark.misc_worker_router
 def test_worker_route():

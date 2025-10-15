@@ -27,7 +27,7 @@ def load_config_files(defaults_filename: str = DEFAULTS_FILENAME, config_filenam
     return data
 
 
-class NetpalmTestHelper:
+class NetstackerTestHelper:
 
     def __init__(self):
         data = load_config_files()
@@ -38,8 +38,6 @@ class NetpalmTestHelper:
         self.headers = {'Content-type': 'application/json', 'Accept': 'text/plain', 'x-api-key': self.apikey}
         # test devices go here
         self.test_device_ios_cli = "10.0.2.33"
-        self.test_device_netconf = "10.0.2.39"
-        self.test_device_restconf = "ios-xe-mgmt-latest.cisco.com"
         self.test_device_cisgo = "cisgo"
         self.http_timeout = 5
         self.task_timeout = 15
