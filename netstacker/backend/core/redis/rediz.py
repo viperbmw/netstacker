@@ -270,7 +270,7 @@ class Rediz:
             creates a local queue on the worker and executes a rpc to create a
             pinned worker on a remote container
         """
-        from netstacker.netpalm_pinned_worker import pinned_worker_constructor
+        from netstacker.netstacker_pinned_worker import pinned_worker_constructor
         try:
             log.info(f"__create_queue_worker: creating queue and worker {pinned_worker_qname}")
             meta_template = self.__get_redis_meta_template()
